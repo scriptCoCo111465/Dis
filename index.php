@@ -1,202 +1,427 @@
 <?php
-// ==================== DISCORD CLONE - SINGLE FILE DEMO (인증 없음) ====================
 session_start();
-if (!isset($_SESSION['user_id'])) $_SESSION['user_id'] = 1;
 
-$dsn = "sqlite:./discord.db";
-$pdo = new PDO($dsn);
-$pdo->exec("CREATE TABLE IF NOT EXISTS servers (id INTEGER PRIMARY KEY, name TEXT, icon_url TEXT, created_at TEXT)");
-$pdo->exec("CREATE TABLE IF NOT EXISTS channels (id INTEGER PRIMARY KEY, server_id INTEGER, name TEXT, type TEXT DEFAULT 'text', position INTEGER DEFAULT 0)");
-$pdo->exec("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, channel_id INTEGER, user_id INTEGER, content TEXT, created_at TEXT)");
+define('JSON_DIR', __DIR__ . '/storage/json/');
+define('BACKUP_DIR', JSON_DIR . 'backup/');
+define('HISTORY_DIR', JSON_DIR . 'history/');
 
-// ====================== POST 처리 ======================
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        if ($_POST['action'] === 'create_server') {
-            $name = $_POST['name'] ?? '새 서버';
-            $icon = '';
-            if (isset($_FILES['icon']) && $_FILES['icon']['error'] === 0) {
-                $icon = 'uploads/' . basename($_FILES['icon']['name']);
-                move_uploaded_file($_FILES['icon']['tmp_name'], $icon);
+function initDirectoriesAndFiles() {
+    foreach ([JSON_DIR, BACKUP_DIR, HISTORY_DIR] as $dir) {
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+    }
+    $firstFile = JSON_DIR . 'users_001.json';
+    if (!file_exists($firstFile)) {
+        writeJson('users_001.json', []);
+    }
+}
+
+initDirectoriesAndFiles();
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+function readJson($file) {
+    $path = JSON_DIR . $file;
+    if (!file_exists($path)) return [];
+    $content = file_get_contents($path);
+    return json_decode($content, true) ?: [];
+}
+
+function writeJson($file, $data) {
+    $path = JSON_DIR . $file;
+    if (file_exists($path)) {
+        $backupPath = BACKUP_DIR . pathinfo($file, PATHINFO_FILENAME) . '_' . date('Ymd_His') . '.json';
+        copy($path, $backupPath);
+    }
+    $tmpPath = $path . '.tmp';
+    file_put_contents($tmpPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    rename($tmpPath, $path);
+}
+
+function getUsersFiles() {
+    $files = [];
+    $i = 1;
+    while (true) {
+        $f = 'users_' . str_pad($i, 3, '0', STR_PAD_LEFT) . '.json';
+        if (!file_exists(JSON_DIR . $f)) break;
+        $files[] = $f;
+        $i++;
+    }
+    if (empty($files)) $files[] = 'users_001.json';
+    return $files;
+}
+
+function updateUserBalance($id, $newBalance) {
+    foreach (getUsersFiles() as $f) {
+        $users = readJson($f);
+        foreach ($users as &$u) {
+            if ($u['id'] === $id) {
+                $u['balance'] = $newBalance;
+                writeJson($f, $users);
+                return true;
             }
-            $stmt = $pdo->prepare("INSERT INTO servers (name, icon_url, created_at) VALUES (?, ?, datetime('now'))");
-            $stmt->execute([$name, $icon]);
-            $server_id = $pdo->lastInsertId();
-            header("Location: ?server=$server_id");
-            exit;
         }
-        
-        if ($_POST['action'] === 'create_channel') {
-            $server_id = $_POST['server_id'];
-            $name = $_POST['name'] ?? '새 채널';
-            $stmt = $pdo->prepare("INSERT INTO channels (server_id, name) VALUES (?, ?)");
-            $stmt->execute([$server_id, $name]);
-            header("Location: ?server=$server_id");
-            exit;
+    }
+    return false;
+}
+
+function saveHistory($userId, $type, $amount, $detail) {
+    $file = HISTORY_DIR . $userId . '.json';
+    $hist = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+    array_unshift($hist, [
+        'time' => date('Y-m-d H:i:s'),
+        'type' => $type,
+        'amount' => $amount,
+        'detail' => $detail
+    ]);
+    file_put_contents($file, json_encode($hist, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
+$message = '';
+$action = $_POST['action'] ?? '';
+$csrf = $_POST['csrf_token'] ?? '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf === $_SESSION['csrf_token']) {
+
+    if ($action === 'register') {
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $withdraw_pw = $_POST['withdraw_pw'] ?? '';
+        $phone = trim($_POST['phone'] ?? '');
+        $aff_input = strtoupper(trim($_POST['aff_code'] ?? ''));
+
+        if (empty($username) || empty($password) || empty($withdraw_pw) || empty($phone)) {
+            $message = "모든 항목을 입력해주세요.";
+        } elseif (strlen($withdraw_pw) < 4) {
+            $message = "환전 비밀번호는 4자 이상이어야 합니다.";
+        } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
+            $message = "올바른 전화번호를 입력해주세요.";
+        } else {
+            $exists = false;
+            foreach (getUsersFiles() as $f) {
+                foreach (readJson($f) as $u) {
+                    if ($u['username'] === $username) $exists = true;
+                }
+            }
+            if ($exists) {
+                $message = "이미 존재하는 아이디입니다.";
+            } else {
+                $aff_code = '';
+                do {
+                    $aff_code = strtoupper(substr(bin2hex(random_bytes(5)), 0, 8));
+                    $duplicate = false;
+                    foreach (getUsersFiles() as $f) {
+                        foreach (readJson($f) as $u) {
+                            if (isset($u['affiliate_code']) && $u['affiliate_code'] === $aff_code) $duplicate = true;
+                        }
+                    }
+                } while ($duplicate);
+
+                $newUser = [
+                    'id' => 'u_' . bin2hex(random_bytes(8)),
+                    'username' => $username,
+                    'password' => password_hash($password, PASSWORD_DEFAULT),
+                    'withdraw_pw' => password_hash($withdraw_pw, PASSWORD_DEFAULT),
+                    'phone' => $phone,
+                    'balance' => 0.0,
+                    'affiliate_code' => $aff_code,
+                    'referred_by' => $aff_input ?: null,
+                    'created_at' => date('c'),
+                    'last_attend' => null
+                ];
+
+                if ($aff_input) {
+                    foreach (getUsersFiles() as $f) {
+                        $users = readJson($f);
+                        foreach ($users as &$u) {
+                            if (isset($u['affiliate_code']) && $u['affiliate_code'] === $aff_input) {
+                                $u['balance'] += 10000;
+                                writeJson($f, $users);
+                                break 2;
+                            }
+                        }
+                    }
+                }
+
+                $files = getUsersFiles();
+                $lastFile = end($files);
+                $data = readJson($lastFile);
+
+                if (count($data) < 1000) {
+                    $data[] = $newUser;
+                    writeJson($lastFile, $data);
+                } else {
+                    $nextFile = 'users_' . str_pad(count($files)+1, 3, '0', STR_PAD_LEFT) . '.json';
+                    writeJson($nextFile, [$newUser]);
+                }
+                $message = "회원가입 완료! 로그인해주세요.";
+            }
         }
-        
-        if ($_POST['action'] === 'send_message') {
-            $channel_id = $_POST['channel_id'];
-            $content = $_POST['content'];
-            $stmt = $pdo->prepare("INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, datetime('now'))");
-            $stmt->execute([$channel_id, $_SESSION['user_id'], $content]);
-            header("Location: ?server={$_POST['server_id']}&channel=$channel_id");
-            exit;
+    }
+
+    if ($action === 'login') {
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $found = false;
+        foreach (getUsersFiles() as $f) {
+            $users = readJson($f);
+            foreach ($users as $u) {
+                if ($u['username'] === $username && password_verify($password, $u['password'])) {
+                    $_SESSION['user'] = $u;
+                    $found = true;
+                    break 2;
+                }
+            }
+        }
+        $message = $found ? "로그인 성공!" : "아이디 또는 비밀번호가 틀렸습니다.";
+    }
+
+    if ($action === 'logout') {
+        session_destroy();
+        header("Location: index.php");
+        exit;
+    }
+
+    if ($action === 'play_game' && isset($_SESSION['user'])) {
+        $game = $_POST['game'] ?? '';
+        $bet = (float)($_POST['bet'] ?? 0);
+
+        if ($bet <= 0 || $_SESSION['user']['balance'] < $bet) {
+            $message = "베팅 금액 오류 또는 잔고 부족";
+        } else {
+            $win = 0; $detail = "";
+
+            if ($game === 'slot') {
+                $symbols = ['🍒','🍋','🍉','⭐','7'];
+                $r1 = $symbols[array_rand($symbols)];
+                $r2 = $symbols[array_rand($symbols)];
+                $r3 = $symbols[array_rand($symbols)];
+                $detail = "$r1 $r2 $r3";
+                if ($r1 === $r2 && $r2 === $r3) $win = $bet * 15;
+                elseif ($r1 === $r2) $win = $bet * 4;
+            } elseif ($game === 'crash') {
+                $multi = round(mt_rand(120, 450) / 100, 2);
+                $win = $bet * $multi;
+                $detail = "{$multi}x";
+            } elseif ($game === 'dice') {
+                $roll = mt_rand(1, 6);
+                $detail = "주사위 {$roll}";
+                $win = ($roll >= 4) ? $bet * 1.8 : 0;
+            }
+
+            $profit = $win - $bet;
+            $_SESSION['user']['balance'] += $profit;
+
+            if ($profit < 0 && isset($_SESSION['user']['referred_by'])) {
+                $loss = abs($profit);
+                $commission = round($loss * 0.4);
+                foreach (getUsersFiles() as $f) {
+                    $users = readJson($f);
+                    foreach ($users as &$u) {
+                        if (isset($u['affiliate_code']) && $u['affiliate_code'] === $_SESSION['user']['referred_by']) {
+                            $u['balance'] += $commission;
+                            writeJson($f, $users);
+                            saveHistory($u['id'], '커미션', $commission, $_SESSION['user']['username'] . ' 손실');
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            updateUserBalance($_SESSION['user']['id'], $_SESSION['user']['balance']);
+            saveHistory($_SESSION['user']['id'], $game, $profit, $detail);
+
+            $message = "[{$game}] {$detail} | " . ($profit >= 0 ? "당첨 +" : "손실 ") . number_format(abs($profit)) . "원";
+        }
+    }
+
+    if ($action === 'withdraw' && isset($_SESSION['user'])) {
+        $amount = (int)$_POST['amount'];
+        $input_pw = $_POST['withdraw_pw'] ?? '';
+        if ($amount < 10000 || $_SESSION['user']['balance'] < $amount) {
+            $message = "환전 금액은 10,000원 이상이어야 합니다.";
+        } elseif (!password_verify($input_pw, $_SESSION['user']['withdraw_pw'])) {
+            $message = "환전 비밀번호가 틀렸습니다.";
+        } else {
+            $_SESSION['user']['balance'] -= $amount;
+            updateUserBalance($_SESSION['user']['id'], $_SESSION['user']['balance']);
+            saveHistory($_SESSION['user']['id'], '환전', -$amount, '환전 신청');
+            $message = "{$amount}원 환전 신청 완료";
         }
     }
 }
 
-// ====================== GET 파라미터 ======================
-$current_server = $_GET['server'] ?? null;
-$current_channel = $_GET['channel'] ?? null;
-
-$servers = $pdo->query("SELECT * FROM servers ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
-
-if ($current_server) {
-    $stmt = $pdo->prepare("SELECT * FROM channels WHERE server_id = ? ORDER BY position");
-    $stmt->execute([$current_server]);
-    $channels = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if ($current_channel) {
-        $stmt = $pdo->prepare("SELECT * FROM messages WHERE channel_id = ? ORDER BY id DESC LIMIT 50");
-        $stmt->execute([$current_channel]);
-        $messages = array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
-    }
-}
+$user = $_SESSION['user'] ?? null;
+$balance = $user['balance'] ?? 0;
+$csrf_token = $_SESSION['csrf_token'];
+$page = $_GET['page'] ?? 'main';
 ?>
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Clone</title>
+    <title>KKR-1777</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; }
-        .channel-list { scrollbar-width: thin; }
+        body { background:#0a0a0a; color:#ddd; }
+        .menu-card { background:#1f1f1f; transition:all 0.2s; }
+        .menu-card:active { transform:scale(0.93); background:#333; }
+        .slot-reel { animation: slotSpin 1.8s ease-in-out; }
+        @keyframes slotSpin { 0% { transform:rotateX(0deg); } 100% { transform:rotateX(3600deg); } }
     </style>
 </head>
-<body class="bg-neutral-900 text-white flex h-screen overflow-hidden">
+<body class="pb-24">
 
-<!-- 서버 리스트 -->
-<div class="w-18 bg-neutral-950 flex flex-col items-center py-3 space-y-3 overflow-y-auto">
-    <?php foreach ($servers as $s): ?>
-        <a href="?server=<?= $s['id'] ?>" class="w-12 h-12 rounded-2xl overflow-hidden border-2 <?= $current_server == $s['id'] ? 'border-white' : 'border-transparent hover:rounded-xl' ?>">
-            <?php if ($s['icon_url']): ?>
-                <img src="<?= $s['icon_url'] ?>" class="w-full h-full object-cover">
-            <?php else: ?>
-                <div class="w-full h-full bg-indigo-600 flex items-center justify-center text-xl font-bold"><?= mb_substr($s['name'], 0, 1) ?></div>
-            <?php endif; ?>
-        </a>
-    <?php endforeach; ?>
-    <a href="?create=1" class="w-12 h-12 rounded-2xl bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-3xl">+</a>
-</div>
+<div class="max-w-[480px] mx-auto bg-black min-h-screen">
 
-<!-- 서버 내부 -->
-<div class="w-60 bg-neutral-800 flex flex-col">
-    <div class="p-3 font-semibold border-b border-neutral-700">
-        <?php if ($current_server): ?>
-            <?php 
-            $stmt = $pdo->prepare("SELECT name FROM servers WHERE id = ?");
-            $stmt->execute([$current_server]);
-            echo $stmt->fetchColumn();
-            ?>
-        <?php else: ?>
-            Discord Clone
-        <?php endif; ?>
-    </div>
-    
-    <div class="flex-1 overflow-y-auto channel-list p-2">
-        <?php if ($current_server): ?>
-            <div class="flex justify-between items-center px-2 py-1 text-xs uppercase text-neutral-400">
-                <span>채널</span>
-                <button onclick="document.getElementById('createChannelModal').showModal()" class="hover:text-white">+</button>
-            </div>
-            <?php foreach ($channels as $ch): ?>
-                <a href="?server=<?= $current_server ?>&channel=<?= $ch['id'] ?>" 
-                   class="flex items-center gap-2 px-2 py-1 hover:bg-neutral-700 rounded <?= $current_channel == $ch['id'] ? 'bg-neutral-700' : '' ?>">
-                    <i class="fa-solid fa-hashtag text-neutral-400"></i>
-                    <span><?= htmlspecialchars($ch['name']) ?></span>
-                </a>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- 메인 채팅 영역 -->
-<div class="flex-1 flex flex-col">
-    <div class="h-12 border-b border-neutral-700 flex items-center px-4 font-medium">
-        <?php if ($current_channel): ?>
-            # <?= htmlspecialchars($pdo->query("SELECT name FROM channels WHERE id = $current_channel")->fetchColumn()) ?>
-        <?php else: ?>
-            서버를 선택해주세요
-        <?php endif; ?>
-    </div>
-    
-    <div class="flex-1 p-4 overflow-y-auto space-y-4" id="chat-area">
-        <?php if (isset($messages)): ?>
-            <?php foreach ($messages as $msg): ?>
-                <div class="flex gap-3">
-                    <div class="w-8 h-8 bg-neutral-600 rounded-full flex-shrink-0"></div>
-                    <div>
-                        <div class="text-sm">
-                            <span class="font-medium">User<?= $msg['user_id'] ?></span>
-                            <span class="text-neutral-500 text-xs ml-2"><?= $msg['created_at'] ?></span>
-                        </div>
-                        <div><?= htmlspecialchars($msg['content']) ?></div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-    
-    <?php if ($current_channel): ?>
-    <form method="POST" class="p-4 border-t border-neutral-700">
-        <input type="hidden" name="action" value="send_message">
-        <input type="hidden" name="channel_id" value="<?= $current_channel ?>">
-        <input type="hidden" name="server_id" value="<?= $current_server ?>">
-        <div class="flex gap-2">
-            <input type="text" name="content" placeholder="메시지를 입력하세요..." 
-                   class="flex-1 bg-neutral-700 rounded-lg px-4 py-3 focus:outline-none">
-            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 px-6 rounded-lg">전송</button>
+    <header class="bg-gradient-to-r from-red-600 to-black p-4 flex justify-between items-center sticky top-0 z-50">
+        <h1 class="text-3xl font-black text-white">고광렬 <span class="text-red-400">1777</span></h1>
+        <?php if($user): ?>
+        <div onclick="location.href='?page=profile'" class="cursor-pointer text-right">
+            <div class="text-xs text-gray-400"><?=htmlspecialchars($user['username'])?></div>
+            <div class="text-xl font-bold text-emerald-400"><?=number_format($balance)?> 원</div>
         </div>
-    </form>
+        <?php endif; ?>
+    </header>
+
+    <?php if($message): ?>
+    <div class="mx-4 mt-4 p-4 bg-zinc-800 border-l-4 border-red-500 rounded-2xl"><?=htmlspecialchars($message)?></div>
     <?php endif; ?>
+
+    <?php if ($page === 'main'): ?>
+    <div class="grid grid-cols-3 gap-3 p-4">
+        <div onclick="location.href='?page=deposit'" class="menu-card p-6 rounded-2xl text-center cursor-pointer"><div class="text-5xl mb-2">💰</div><div class="text-sm">충전</div></div>
+        <div onclick="location.href='?page=withdraw'" class="menu-card p-6 rounded-2xl text-center cursor-pointer"><div class="text-5xl mb-2">📤</div><div class="text-sm">환전</div></div>
+        <div onclick="location.href='?page=profile'" class="menu-card p-6 rounded-2xl text-center cursor-pointer"><div class="text-5xl mb-2">👤</div><div class="text-sm">프로필</div></div>
+
+        <div onclick="location.href='?page=slot'" class="menu-card p-6 rounded-2xl text-center cursor-pointer"><div class="text-5xl mb-2">🎰</div><div class="text-sm">슬롯</div></div>
+        <div onclick="location.href='?page=crash'" class="menu-card p-6 rounded-2xl text-center cursor-pointer"><div class="text-5xl mb-2">🚀</div><div class="text-sm">크래시</div></div>
+        <div onclick="location.href='?page=dice'" class="menu-card p-6 rounded-2xl text-center cursor-pointer"><div class="text-5xl mb-2">🎲</div><div class="text-sm">주사위</div></div>
+
+        <div onclick="location.href='?page=history'" class="menu-card p-6 rounded-2xl text-center cursor-pointer"><div class="text-5xl mb-2">📋</div><div class="text-sm">배팅내역</div></div>
+    </div>
+
+    <?php elseif ($page === 'deposit'): ?>
+    <div class="p-6">
+        <h2 class="text-3xl font-bold mb-6">💰 충전하기</h2>
+        <div class="bg-zinc-900 rounded-3xl p-8 text-center mb-8">
+            <p class="text-lg">카카오뱅크</p>
+            <p class="text-2xl font-bold mt-2">김시우</p>
+            <p class="text-3xl font-mono text-emerald-400 mt-4">7777-03-0806539</p>
+        </div>
+        <input id="dep-amount" type="number" min="5000" value="50000" class="w-full bg-zinc-900 p-6 rounded-2xl text-3xl text-center">
+        <button onclick="alert('충전 신청이 접수되었습니다.')" class="w-full mt-6 bg-emerald-600 py-6 rounded-2xl text-2xl font-bold">충전 신청</button>
+    </div>
+
+    <?php elseif ($page === 'withdraw'): ?>
+    <div class="p-6">
+        <h2 class="text-3xl font-bold mb-6">📤 환전하기</h2>
+        <input id="wd-amount" type="number" min="10000" value="50000" class="w-full bg-zinc-900 p-6 rounded-2xl text-3xl text-center mb-4">
+        <input id="wd-pw" type="password" placeholder="환전 비밀번호" class="w-full bg-zinc-900 p-6 rounded-2xl text-xl">
+        <button onclick="withdrawSubmit()" class="w-full mt-8 bg-red-600 py-6 rounded-2xl text-2xl font-bold">환전 신청</button>
+    </div>
+
+    <?php elseif ($page === 'slot'): ?>
+    <div class="p-6">
+        <h2 class="text-3xl font-bold mb-6 text-center">🎰 슬롯 머신</h2>
+        <div id="slot-result" class="text-7xl h-32 flex items-center justify-center bg-zinc-900 rounded-3xl mb-8">🍒 🍋 ⭐</div>
+        <input id="slot-bet" type="number" value="10000" class="w-full bg-zinc-900 p-6 rounded-2xl text-3xl text-center mb-6">
+        <button onclick="playSlot()" class="w-full bg-red-600 py-6 rounded-2xl text-2xl font-bold">스핀하기</button>
+    </div>
+
+    <?php elseif ($page === 'crash'): ?>
+    <div class="p-6">
+        <h2 class="text-3xl font-bold mb-6 text-center">🚀 크래시</h2>
+        <div id="crash-result" class="text-6xl h-32 flex items-center justify-center bg-zinc-900 rounded-3xl mb-8">배율 대기중...</div>
+        <input id="crash-bet" type="number" value="5000" class="w-full bg-zinc-900 p-6 rounded-2xl text-3xl text-center mb-6">
+        <button onclick="playCrash()" class="w-full bg-red-600 py-6 rounded-2xl text-2xl font-bold">베팅하기</button>
+    </div>
+
+    <?php elseif ($page === 'dice'): ?>
+    <div class="p-6">
+        <h2 class="text-3xl font-bold mb-6 text-center">🎲 주사위</h2>
+        <div id="dice-result" class="text-8xl h-32 flex items-center justify-center bg-zinc-900 rounded-3xl mb-8">🎲</div>
+        <input id="dice-bet" type="number" value="10000" class="w-full bg-zinc-900 p-6 rounded-2xl text-3xl text-center mb-6">
+        <button onclick="playDice()" class="w-full bg-red-600 py-6 rounded-2xl text-2xl font-bold">던지기</button>
+    </div>
+
+    <?php elseif ($page === 'profile'): ?>
+    <div class="p-6">
+        <h2 class="text-3xl font-bold mb-6">👤 프로필</h2>
+        <div class="bg-zinc-900 rounded-3xl p-6 mb-6 text-center">
+            <div class="text-5xl font-mono text-yellow-300"><?= htmlspecialchars($user['affiliate_code'] ?? '') ?></div>
+            <button onclick="navigator.clipboard.writeText('<?= $user['affiliate_code'] ?? '' ?>'); alert('추천인 코드 복사됨')" class="mt-4 w-full bg-white text-black py-4 rounded-2xl font-bold">코드 복사하기</button>
+        </div>
+        <div class="bg-zinc-900 rounded-3xl p-6">
+            <div class="flex justify-between py-3"><span>아이디</span><span><?= htmlspecialchars($user['username']) ?></span></div>
+            <div class="flex justify-between py-3"><span>전화번호</span><span><?= htmlspecialchars($user['phone']) ?></span></div>
+            <div class="flex justify-between py-3"><span>잔고</span><span class="text-emerald-400 font-bold"><?= number_format($balance) ?>원</span></div>
+        </div>
+    </div>
+
+    <?php elseif ($page === 'history'): ?>
+    <div class="p-6">
+        <h2 class="text-3xl font-bold mb-6">📋 배팅 기록</h2>
+        <?php 
+        $histFile = HISTORY_DIR . ($user['id'] ?? '') . '.json';
+        $history = file_exists($histFile) ? json_decode(file_get_contents($histFile), true) : [];
+        foreach ($history as $h): ?>
+            <div class="bg-zinc-900 p-4 rounded-2xl mb-3">
+                <div class="flex justify-between"><span><?= $h['time'] ?></span><span class="<?= $h['amount'] >= 0 ? 'text-green-400' : 'text-red-400' ?>"><?= number_format($h['amount']) ?>원</span></div>
+                <div class="text-xs text-gray-400"><?= htmlspecialchars($h['detail']) ?></div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
 </div>
-
-<!-- 서버 생성 모달 -->
-<dialog id="createServerModal" class="bg-neutral-800 text-white p-6 rounded-xl w-96">
-    <h2 class="text-xl mb-4">서버 만들기</h2>
-    <form method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="action" value="create_server">
-        <input type="text" name="name" placeholder="서버 이름" class="w-full bg-neutral-700 p-3 rounded mb-4" required>
-        <input type="file" name="icon" accept="image/*" class="mb-4">
-        <div class="flex justify-end gap-3">
-            <button type="button" onclick="this.closest('dialog').close()" class="px-4 py-2">취소</button>
-            <button type="submit" class="bg-indigo-600 px-6 py-2 rounded">만들기</button>
-        </div>
-    </form>
-</dialog>
-
-<!-- 채널 생성 모달 -->
-<dialog id="createChannelModal" class="bg-neutral-800 text-white p-6 rounded-xl w-96">
-    <h2 class="text-xl mb-4">채널 만들기</h2>
-    <form method="POST">
-        <input type="hidden" name="action" value="create_channel">
-        <input type="hidden" name="server_id" value="<?= $current_server ?>">
-        <input type="text" name="name" placeholder="채널 이름" class="w-full bg-neutral-700 p-3 rounded mb-4" required>
-        <div class="flex justify-end gap-3">
-            <button type="button" onclick="this.closest('dialog').close()" class="px-4 py-2">취소</button>
-            <button type="submit" class="bg-indigo-600 px-6 py-2 rounded">만들기</button>
-        </div>
-    </form>
-</dialog>
 
 <script>
-if (window.location.search === '?create=1') {
-    document.getElementById('createServerModal').showModal();
+function withdrawSubmit() {
+    const form = new FormData();
+    form.append('action', 'withdraw');
+    form.append('amount', document.getElementById('wd-amount').value);
+    form.append('withdraw_pw', document.getElementById('wd-pw').value);
+    form.append('csrf_token', '<?= $csrf_token ?>');
+    fetch('index.php', {method:'POST', body:form}).then(() => location.reload());
+}
+
+function playSlot() {
+    const bet = document.getElementById('slot-bet').value;
+    const form = new FormData();
+    form.append('action', 'play_game');
+    form.append('game', 'slot');
+    form.append('bet', bet);
+    form.append('csrf_token', '<?= $csrf_token ?>');
+    fetch('index.php', {method:'POST', body:form}).then(() => location.reload());
+}
+
+function playCrash() {
+    const bet = document.getElementById('crash-bet').value;
+    const form = new FormData();
+    form.append('action', 'play_game');
+    form.append('game', 'crash');
+    form.append('bet', bet);
+    form.append('csrf_token', '<?= $csrf_token ?>');
+    fetch('index.php', {method:'POST', body:form}).then(() => location.reload());
+}
+
+function playDice() {
+    const bet = document.getElementById('dice-bet').value;
+    const form = new FormData();
+    form.append('action', 'play_game');
+    form.append('game', 'dice');
+    form.append('bet', bet);
+    form.append('csrf_token', '<?= $csrf_token ?>');
+    fetch('index.php', {method:'POST', body:form}).then(() => location.reload());
 }
 </script>
+
 </body>
 </html>
