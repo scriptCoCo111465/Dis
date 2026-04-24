@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ffa HUB — Roblox Scripts & Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #161616;
+    --bg4: #1c1c1c;
+    --card: #141414;
+    --card2: #0f1f18;
+    --card-border: rgba(255,255,255,0.07);
+    --mint: #00f5a0;
+    --mint2: #00c97a;
+    --mint-dim: rgba(0,245,160,0.12);
+    --mint-dim2: rgba(0,245,160,0.07);
+    --blue: #6b8cff;
+    --blue-dim: rgba(107,140,255,0.12);
+    --text: #ffffff;
+    --text2: #a0a0a0;
+    --text3: #606060;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--card-border);
+    padding: 12px 20px;
+  }
+  .nav-inner {
+    max-width: 480px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-logo {
+    width: 32px; height: 32px;
+    background: var(--mint-dim);
+    border: 1px solid var(--mint2);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .nav-title { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; }
+  .nav-sub { font-size: 11px; color: var(--text3); letter-spacing: 0.05em; }
+  .nav-pills {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .nav-pill {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .nav-pill:hover { border-color: var(--mint2); color: var(--mint); }
+  .nav-pill.active { border-color: var(--mint2); color: var(--mint); background: var(--mint-dim2); }
+
+  /* ─── PAGE SECTIONS ─── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ─── HERO ─── */
+  .hero {
+    padding: 48px 20px 32px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint);
+    background: var(--mint-dim2);
+    border: 1px solid rgba(0,245,160,0.2);
+    border-radius: 999px;
+    padding: 6px 14px;
+    margin-bottom: 24px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--mint);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .hero h1 {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+  .hero h1 .accent {
+    color: var(--mint);
+    background: linear-gradient(135deg, #00f5a0, #00c9ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    font-size: 16px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+  .hero p strong { color: var(--text); font-weight: 600; }
+  .stats-row {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    margin-bottom: 24px;
+  }
+  .stat {
+    text-align: center;
+    border-right: 1px solid var(--card-border);
+    padding: 0 16px;
+  }
+  .stat:last-child { border-right: none; }
+  .stat-num { font-size: 26px; font-weight: 700; color: var(--mint); }
+  .stat-label { font-size: 11px; color: var(--text3); letter-spacing: 0.05em; margin-top: 2px; }
+
+  /* ─── SECTION LABEL ─── */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 0 20px;
+    max-width: 480px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--card-border);
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 0 20px 12px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 12px;
+  }
+  .card.green-tint {
+    background: var(--card2);
+    border-color: rgba(0,245,160,0.15);
+  }
+  .card.blue-tint {
+    background: #0d1320;
+    border-color: rgba(107,140,255,0.2);
+  }
+  .card-icon {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--bg3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin-bottom: 14px;
+    border: 1px solid var(--card-border);
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: 10px;
+  }
+  .card-title.blue { color: var(--blue); }
+  .card p {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--card-border);
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    border: 1px solid;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .btn-mint {
+    background: var(--mint-dim);
+    border-color: var(--mint2);
+    color: var(--mint);
+  }
+  .btn-mint:hover { background: rgba(0,245,160,0.2); }
+  .btn-blue {
+    background: var(--blue-dim);
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .btn-blue:hover { background: rgba(107,140,255,0.2); }
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--card-border);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--text3); color: var(--text); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+  /* ─── STEPS ─── */
+  .steps { display: flex; flex-direction: column; gap: 16px; }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .step-num {
+    width: 28px; height: 28px; min-width: 28px;
+    border-radius: 50%;
+    background: var(--mint-dim);
+    border: 1px solid var(--mint2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--mint);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .step-num.blue {
+    background: var(--blue-dim);
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .step-text { font-size: 14px; color: var(--text2); line-height: 1.5; padding-top: 4px; }
+  .step-text strong { color: var(--text); font-weight: 600; }
+  .step-text a { color: var(--mint); text-decoration: none; }
+
+  /* ─── CHECKLIST ─── */
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .check-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 14px; color: var(--text2);
+  }
+  .check-mark {
+    color: var(--mint);
+    font-size: 12px;
+    margin-top: 2px;
+    min-width: 14px;
+  }
+
+  /* ─── FEATURE PILLS ─── */
+  .feature-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .feature-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--card-border);
+    color: var(--text2);
+  }
+  .feature-pill.active {
+    background: var(--mint-dim2);
+    border-color: rgba(0,245,160,0.2);
+    color: var(--mint);
+  }
+
+  /* ─── SCRIPTS PAGE ─── */
+  .search-bar {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 20px 16px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 16px;
+  }
+  .search-bar input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    width: 100%;
+  }
+  .search-bar input::placeholder { color: var(--text3); }
+
+  .script-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin: 0 20px 10px;
+    max-width: 480px;
+    margin-left: auto; margin-right: auto; margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    text-decoration: none;
+    display: block;
+  }
+  .script-card:hover { border-color: rgba(0,245,160,0.2); background: var(--card2); }
+  .script-card-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .script-card-desc { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
+  .script-card-meta { display: flex; align-items: center; gap: 10px; }
+  .views-badge {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--mint-dim2);
+    border: 1px solid rgba(0,245,160,0.2);
+    color: var(--mint);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .time-label { font-size: 11px; color: var(--text3); }
+
+  /* ─── GAME GRID ─── */
+  .game-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .game-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--card-border);
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: pointer;
+  }
+
+  /* ─── TIP BOX ─── */
+  .tip-box {
+    background: var(--card2);
+    border: 1px solid rgba(0,245,160,0.2);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 14px;
+    color: var(--mint);
+    line-height: 1.6;
+  }
+  .tip-box strong { color: var(--mint); }
+
+  /* ─── VIDEO CARD ─── */
+  .video-card {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 14px;
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+  }
+  .video-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.5;
+  }
+  .play-btn {
+    position: absolute;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(255,0,0,0.9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    color: white;
+  }
+  .video-title {
+    position: absolute;
+    top: 12px; left: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+
+  /* ─── FAQ ─── */
+  .faq-item {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin: 0 20px 10px;
+    max-width: 480px;
+    margin-left: auto; margin-right: auto; margin-bottom: 10px;
+  }
+  .faq-q { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+  .faq-a { font-size: 14px; color: var(--text2); line-height: 1.6; }
+  .faq-a strong { color: var(--text); }
+
+  /* ─── DISCORD ─── */
+  .discord-card {
+    background: #0d1020;
+    border: 1px solid rgba(107,140,255,0.2);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    margin: 0 20px 12px;
+    max-width: 480px;
+    margin-left: auto; margin-right: auto; margin-bottom: 12px;
+  }
+  .discord-icon { font-size: 32px; margin-bottom: 12px; }
+  .discord-title { font-size: 20px; font-weight: 700; color: var(--blue); margin-bottom: 10px; }
+  .discord-desc { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    padding: 32px 20px 48px;
+    max-width: 480px;
+    margin: 0 auto;
+    border-top: 1px solid var(--card-border);
+    margin-top: 32px;
+  }
+  .footer-brand { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+  .footer-links { display: flex; flex-wrap: wrap; gap: 16px; }
+  .footer-link { font-size: 12px; color: var(--text3); text-decoration: none; cursor: pointer; }
+  .footer-link:hover { color: var(--mint); }
+
+  /* ─── OBFUSCATOR PAGE ─── */
+  .code-area {
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 10px;
+  }
+  .code-area:focus { border-color: rgba(0,245,160,0.3); }
+
+  /* top padding for sections */
+  .section-top { margin-top: 32px; }
+</style>
+</head>
+<body>
+
+<!-- ─── NAV ─── -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="nav-logo">🛸</div>
+      <div>
+        <div class="nav-title">FFA HUB</div>
+        <div class="nav-sub">Scripts · Clients · Tutorials</div>
+      </div>
+    </div>
+    <div class="nav-pills">
+      <a class="nav-pill active" onclick="showPage('home', this)">Home</a>
+      <a class="nav-pill" onclick="showPage('scripts', this)">Scripts</a>
+      <a class="nav-pill" onclick="showPage('obfuscator', this)">Obfuscator</a>
+      <a class="nav-pill" onclick="showPage('platform', this)">Platform</a>
+      <a class="nav-pill" onclick="showPage('getkey', this)">Get Key</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════ HOME PAGE ═══════════════ -->
+<div class="page active" id="page-home">
+
+  <div class="hero">
+    <div class="badge"><span class="badge-dot"></span> Roblox Community Hub</div>
+    <h1>Your hub for<br><span class="accent">Roblox Tools</span><br>& Scripts</h1>
+    <p><strong>FFA HUB</strong> is a free resource platform for Roblox enthusiasts. We provide game-specific scripts, Lua obfuscation tools, a key authentication system, and tutorials to help players and developers get the most out of their Roblox experience.</p>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-num">10+</div>
+        <div class="stat-label">Supported Games</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">Free</div>
+        <div class="stat-label">Always</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">Auto</div>
+        <div class="stat-label">Updated</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">About NXT HUB</div>
+
+  <div class="card green-tint">
+    <div class="card-icon">🧩</div>
+    <div class="card-title">What is NXT HUB?</div>
+    <p>FFA HUB is a community-driven platform designed for Roblox enthusiasts. We share game-specific scripts, developer utilities, and educational video guides — all in one place. Our tools are free to use and updated regularly to keep up with game patches.</p>
+  </div>
+
+  <div class="card green-tint">
+    <div class="card-icon">🎯</div>
+    <div class="card-title">Who is it for?</div>
+    <p>Whether you're a casual player looking for convenience scripts, a developer wanting to protect your Lua code, or a creator building your own script hub with key authentication — NXT HUB has tools for every level.</p>
+  </div>
+
+  <div class="section-label section-top">Tools &amp; Features</div>
+
+  <div class="card">
+    <div class="card-icon">📜</div>
+    <div class="card-title">Script Hub</div>
+    <p>A growing collection of auto-updated scripts for popular Roblox games. Each script is tested and organized by game category.</p>
+    <div class="tag-row">
+      <span class="tag">Blox Fruit</span>
+      <span class="tag">King Legacy</span>
+      <span class="tag">Sailor Piece</span>
+      <span class="tag">+more</span>
+    </div>
+    <a class="btn btn-mint" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">View Scripts</a>
+  </div>
+
+  <div class="card">
+    <div class="card-icon">🔒</div>
+    <div class="card-title">Lua Obfuscator</div>
+    <p>Protect your Lua source code using VM-based obfuscation. Transform readable scripts into protected, hard-to-reverse-engineer code.</p>
+    <div class="tag-row">
+      <span class="tag">VM-Based</span>
+      <span class="tag">Lua 5.1</span>
+      <span class="tag">Anti-Decompile</span>
+    </div>
+    <a class="btn btn-mint" onclick="showPage('obfuscator', document.querySelectorAll('.nav-pill')[2])">Open Tool</a>
+  </div>
+
+  <div class="card">
+    <div class="card-icon">🔑</div>
+    <div class="card-title">Key System</div>
+    <p>NXT System provides anti-bypass key authentication powered by Linkvertise. Integrate a secure key gate into your own scripts easily.</p>
+    <div class="tag-row">
+      <span class="tag">Webhook</span>
+      <span class="tag">Anti-Bypass</span>
+      <span class="tag">Dashboard</span>
+    </div>
+    <a class="btn btn-mint" onclick="showPage('platform', document.querySelectorAll('.nav-pill')[3])">Learn More</a>
+  </div>
+
+  <div class="section-label section-top">How to Get Started</div>
+
+  <div class="card green-tint">
+    <div class="card-title">Get Your Key and Run Scripts in 3 Steps</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Get your key</strong> — Visit the <a onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a> page and follow the short tutorial video to obtain your access key via Linkvertise.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Open a script executor</strong> — Launch your preferred Roblox executor and paste the loader script from our Script Hub.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Execute &amp; enjoy</strong> — Enter your key when prompted and enjoy the features in your game. Keys are valid for 24 hours.</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-mint" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">→ Watch Tutorial</a>
+      <a class="btn btn-ghost" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Browse Scripts</a>
+    </div>
+  </div>
+
+  <div class="section-label section-top">Supported Games</div>
+
+  <div class="card">
+    <div class="card-title">Currently Supported</div>
+    <div class="game-grid">
+      <div class="game-btn">🍎 Blox Fruit</div>
+      <div class="game-btn">⚔️ King Legacy</div>
+      <div class="game-btn">⛵ Sailor Piece</div>
+      <div class="game-btn">🏴‍☠️ Grand Piece</div>
+      <div class="game-btn">🌊 Sea Piece</div>
+      <div class="game-btn">🌀 Fruit Seas</div>
+      <div class="game-btn">🗡️ Haze Piece</div>
+      <div class="game-btn">✨ More soon</div>
+    </div>
+    <p style="font-size:13px; color:var(--text3); line-height:1.6;">Scripts are tested after each major game update. If a game you play is not listed, check the <a style="color:var(--mint);text-decoration:none;cursor:pointer;" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Script List</a> for the most up-to-date collection.</p>
+  </div>
+
+  <footer>
+    <div class="footer-brand">FFA HUB © 2026 — nxt-hub.xyz</div>
+    <div class="footer-links">
+      <a class="footer-link" onclick="showPage('home', document.querySelectorAll('.nav-pill')[0])">Home</a>
+      <a class="footer-link" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Scripts</a>
+      <a class="footer-link" onclick="showPage('obfuscator', document.querySelectorAll('.nav-pill')[2])">Obfuscator</a>
+      <a class="footer-link" onclick="showPage('platform', document.querySelectorAll('.nav-pill')[3])">Platform</a>
+      <a class="footer-link" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a>
+      <a class="footer-link" href="#">↑ Top</a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ SCRIPTS PAGE ═══════════════ -->
+<div class="page" id="page-scripts">
+  <div class="hero">
+    <div class="badge">📜 Script Hub</div>
+    <h1>Script<br><span class="accent">Collection</span></h1>
+    <p>Browse all available scripts. Click any script to view and copy the loader. Requires a valid key — see <a style="color:var(--mint);text-decoration:none;cursor:pointer" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a> for details.</p>
+  </div>
+
+  <div class="search-bar">
+    <span style="color:var(--text3);font-size:16px;">🔍</span>
+    <input type="text" placeholder="Search scripts by name or game..." id="search-input" oninput="filterScripts()">
+  </div>
+
+  <div id="scripts-list">
+    <div class="script-card" onclick="alert('Loader: loadstring(game:HttpGet(\'https://nxt-hub.xyz/loader/sailorpiece\'))()')">
+      <div class="script-card-title">Sailor Piece</div>
+      <div class="script-card-desc">Teleport Bypass Auto Farm level Auto Boss Event/Hop ...</div>
+      <div class="script-card-meta">
+        <span class="views-badge">203 views</span>
+        <span class="time-label">22d ago</span>
+      </div>
+    </div>
+    <div class="script-card" onclick="alert('Loader: loadstring(game:HttpGet(\'https://nxt-hub.xyz/loader/bloxfruitpvp\'))()')">
+      <div class="script-card-title">Script PVP Blox Fruit</div>
+      <div class="script-card-desc">AimBot Auto Skill</div>
+      <div class="script-card-meta">
+        <span class="views-badge">559 views</span>
+        <span class="time-label">1mo ago</span>
+      </div>
+    </div>
+    <div class="script-card" onclick="alert('Loader: loadstring(game:HttpGet(\'https://nxt-hub.xyz/loader/autobounty\'))()')">
+      <div class="script-card-title">Auto Bounty King Legacy</div>
+      <div class="script-card-desc">Best Script Auto Bounty King Legacy</div>
+      <div class="script-card-meta">
+        <span class="views-badge">2445 views</span>
+        <span class="time-label">1mo ago</span>
+      </div>
+    </div>
+    <div class="script-card" onclick="alert('Loader: loadstring(game:HttpGet(\'https://nxt-hub.xyz/loader/nxthub\'))()')">
+      <div class="script-card-title">NXT HUB</div>
+      <div class="script-card-desc">Script NXT HUB - Blox Fruit - Demon Blade - Uprising Zombie - Build a Boat for Treasure - King Legacy -...</div>
+      <div class="script-card-meta">
+        <span class="views-badge">33292 views</span>
+        <span class="time-label">2mo ago</span>
+      </div>
+    </div>
+    <div class="script-card" onclick="alert('Loader: loadstring(game:HttpGet(\'https://nxt-hub.xyz/loader/grandpiece\'))()')">
+      <div class="script-card-title">Grand Piece Online</div>
+      <div class="script-card-desc">Auto Farm Devil Fruit Sea Beast Event Auto Raid</div>
+      <div class="script-card-meta">
+        <span class="views-badge">891 views</span>
+        <span class="time-label">3mo ago</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">NXT HUB © 2026 — nxt-hub.xyz</div>
+    <div class="footer-links">
+      <a class="footer-link" onclick="showPage('home', document.querySelectorAll('.nav-pill')[0])">Home</a>
+      <a class="footer-link" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Scripts</a>
+      <a class="footer-link" onclick="showPage('obfuscator', document.querySelectorAll('.nav-pill')[2])">Obfuscator</a>
+      <a class="footer-link" onclick="showPage('platform', document.querySelectorAll('.nav-pill')[3])">Platform</a>
+      <a class="footer-link" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ OBFUSCATOR PAGE ═══════════════ -->
+<div class="page" id="page-obfuscator">
+  <div class="hero">
+    <div class="badge"><span class="badge-dot"></span> Best #1 Free Lua Obfuscator</div>
+    <h1>Obfuscate Lua.<br><span class="accent">Stay Unreadable.</span></h1>
+    <p><strong>Obfuscator NXT</strong> is a free Lua obfuscator designed to make your scripts extremely hard to reverse-engineer. Built with <strong>8 different VM types</strong> for layered protection.</p>
+    <div class="feature-pills">
+      <span class="feature-pill active">✅ 100% Free</span>
+      <span class="feature-pill active">🛡️ 8 VM Types</span>
+      <span class="feature-pill">⚡ Fast Pipeline</span>
+      <span class="feature-pill">🔒 Anti-Decompile</span>
+      <span class="feature-pill">🔀 String Encryption</span>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-blue">Join Discord ↗</a>
+      <a class="btn btn-mint">Watch Guide</a>
+    </div>
+  </div>
+
+  <div class="section-label">How it Works</div>
+
+  <div class="card green-tint">
+    <div class="card-title">How to Start</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num blue">1</div>
+        <div class="step-text"><strong>Join our Discord</strong> — All obfuscation is done through our Discord bot.</div>
+      </div>
+      <div class="step">
+        <div class="step-num blue">2</div>
+        <div class="step-text"><strong>Post your code</strong> — Paste your Lua script in the correct channel.</div>
+      </div>
+      <div class="step">
+        <div class="step-num blue">3</div>
+        <div class="step-text"><strong>Follow bot steps</strong> — The bot will guide you through the obfuscation options.</div>
+      </div>
+      <div class="step">
+        <div class="step-num blue">4</div>
+        <div class="step-text"><strong>Download output</strong> — Get your protected, obfuscated script file.</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-blue">Join Discord ↗</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Security Layers</div>
+    <p>Every obfuscated script passes through multiple protection layers to ensure maximum resistance to reverse engineering.</p>
+    <div class="checklist">
+      <div class="check-item"><span class="check-mark">✓</span> 8 different VM execution types</div>
+      <div class="check-item"><span class="check-mark">✓</span> Multiple transformation passes</div>
+      <div class="check-item"><span class="check-mark">✓</span> VM-based execution paths</div>
+      <div class="check-item"><span class="check-mark">✓</span> String encryption at runtime</div>
+      <div class="check-item"><span class="check-mark">✓</span> Control flow obfuscation</div>
+      <div class="check-item"><span class="check-mark">✓</span> Anti-static readability</div>
+      <div class="check-item"><span class="check-mark">✓</span> Resists common decompilers</div>
+    </div>
+  </div>
+
+  <div class="section-label section-top">Tutorial</div>
+
+  <div class="card">
+    <div class="card-title">Watch Tutorial</div>
+    <div class="video-card" onclick="window.open('https://youtube.com','_blank')">
+      <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a2a1a,#0a1a0a);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+        <div class="play-btn">▶</div>
+      </div>
+      <div class="video-title">How To Obfuscate Lua | Easy Tutorial</div>
+    </div>
+    <div class="tip-box">
+      <strong>Tip:</strong> Watch the full video before starting. The key process uses Linkvertise — complete each step carefully to receive your key without issues.
+    </div>
+  </div>
+
+  <div class="section-label section-top">Community</div>
+
+  <div class="discord-card">
+    <div class="discord-icon">💬</div>
+    <div class="discord-title">Discord Community</div>
+    <div class="discord-desc">Join our Discord server to access the obfuscation bot, get support, and connect with other script developers in the NXT community.</div>
+    <div class="checklist" style="margin-bottom:16px;">
+      <div class="check-item"><span class="check-mark">✓</span> Obfuscation bot included</div>
+      <div class="check-item"><span class="check-mark">✓</span> Community support</div>
+      <div class="check-item"><span class="check-mark">✓</span> Script sharing channel</div>
+      <div class="check-item"><span class="check-mark">✓</span> Update announcements</div>
+    </div>
+    <a class="btn btn-blue" style="width:100%;justify-content:center;">Join Discord ↗</a>
+  </div>
+
+  <footer>
+    <div class="footer-brand">NXT HUB © 2026 — nxt-hub.xyz</div>
+    <div class="footer-links">
+      <a class="footer-link" onclick="showPage('home', document.querySelectorAll('.nav-pill')[0])">Home</a>
+      <a class="footer-link" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Scripts</a>
+      <a class="footer-link" onclick="showPage('obfuscator', document.querySelectorAll('.nav-pill')[2])">Obfuscator</a>
+      <a class="footer-link" onclick="showPage('platform', document.querySelectorAll('.nav-pill')[3])">Platform</a>
+      <a class="footer-link" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ PLATFORM PAGE ═══════════════ -->
+<div class="page" id="page-platform">
+  <div class="hero">
+    <div class="badge">🔑 Key System</div>
+    <h1>Secure Key<br><span class="accent">Authentication</span></h1>
+    <p>NXT System provides anti-bypass key authentication powered by Linkvertise. Integrate a secure key gate into your own scripts easily with our webhook-based system.</p>
+    <div class="feature-pills">
+      <span class="feature-pill active">🔐 Anti-Bypass</span>
+      <span class="feature-pill active">🪝 Webhook</span>
+      <span class="feature-pill active">📊 Dashboard</span>
+      <span class="feature-pill">⚡ Fast Auth</span>
+    </div>
+  </div>
+
+  <div class="section-label">Features</div>
+
+  <div class="card green-tint">
+    <div class="card-title">Platform Features</div>
+    <div class="checklist">
+      <div class="check-item"><span class="check-mark">✓</span> Anti-bypass key validation</div>
+      <div class="check-item"><span class="check-mark">✓</span> Linkvertise integration</div>
+      <div class="check-item"><span class="check-mark">✓</span> Webhook notifications</div>
+      <div class="check-item"><span class="check-mark">✓</span> Real-time dashboard</div>
+      <div class="check-item"><span class="check-mark">✓</span> 24-hour key expiry system</div>
+      <div class="check-item"><span class="check-mark">✓</span> Session-based key binding</div>
+      <div class="check-item"><span class="check-mark">✓</span> Easy script integration</div>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-blue">Join Discord ↗</a>
+      <a class="btn btn-mint" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a>
+    </div>
+  </div>
+
+  <div class="section-label section-top">Community</div>
+
+  <div class="discord-card">
+    <div class="discord-icon">💬</div>
+    <div class="discord-title">Discord Community</div>
+    <div class="discord-desc">Join our Discord server to access the platform, get support, and connect with other developers in the NXT community.</div>
+    <div class="checklist" style="margin-bottom:16px;">
+      <div class="check-item"><span class="check-mark">✓</span> Platform access</div>
+      <div class="check-item"><span class="check-mark">✓</span> Developer support</div>
+      <div class="check-item"><span class="check-mark">✓</span> Integration guides</div>
+      <div class="check-item"><span class="check-mark">✓</span> Update announcements</div>
+    </div>
+    <a class="btn btn-blue" style="width:100%;justify-content:center;">Join Discord ↗</a>
+  </div>
+
+  <footer>
+    <div class="footer-brand">NXT HUB © 2026 — nxt-hub.xyz</div>
+    <div class="footer-links">
+      <a class="footer-link" onclick="showPage('home', document.querySelectorAll('.nav-pill')[0])">Home</a>
+      <a class="footer-link" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Scripts</a>
+      <a class="footer-link" onclick="showPage('obfuscator', document.querySelectorAll('.nav-pill')[2])">Obfuscator</a>
+      <a class="footer-link" onclick="showPage('platform', document.querySelectorAll('.nav-pill')[3])">Platform</a>
+      <a class="footer-link" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ GET KEY PAGE ═══════════════ -->
+<div class="page" id="page-getkey">
+  <div class="hero">
+    <div class="badge">🔑 Get Key</div>
+    <h1>How to Get<br><span class="accent">Your Key</span></h1>
+    <p>Follow the step-by-step guide below to obtain your NXT HUB access key. The process takes less than 2 minutes and your key is valid for 24 hours.</p>
+  </div>
+
+  <div class="section-label">Video Guide</div>
+
+  <div class="card">
+    <div class="card-title">Watch Tutorial</div>
+    <div class="video-card" onclick="window.open('https://youtube.com','_blank')">
+      <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a2a1a,#0a1a0a);display:flex;align-items:center;justify-content:center;">
+        <div class="play-btn">▶</div>
+      </div>
+      <div class="video-title">Script NXT HUB Key Tutorial</div>
+    </div>
+    <div class="tip-box">
+      <strong>Tip:</strong> Watch the full video before starting. The key process uses Linkvertise — complete each step carefully to receive your key without issues.
+    </div>
+  </div>
+
+  <div class="section-label section-top">Step by Step</div>
+
+  <div class="card green-tint">
+    <div class="card-title">Key Redemption Guide</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Open the Script Hub</strong> — Go to the <a onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Scripts page</a> and find the game script you want to use.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Click "Get Key"</strong> — You will be redirected to Linkvertise. This supports NXT HUB and keeps our scripts free.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Complete the Linkvertise steps</strong> — Follow the on-screen instructions. Do not skip or close the page before it finishes.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text"><strong>Copy your key</strong> — After completing all steps, your unique key will appear. Copy it to your clipboard.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text"><strong>Paste into executor</strong> — Open your Roblox executor, paste the script, execute it, and paste your key when the UI appears.</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-mint" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Go to Scripts</a>
+      <a class="btn btn-ghost">NXT System</a>
+    </div>
+  </div>
+
+  <div class="section-label section-top">FAQ</div>
+
+  <div class="faq-item">
+    <div class="faq-q">How long is my key valid?</div>
+    <div class="faq-a">Each key is valid for <strong>24 hours</strong> from the time it is generated. After expiry, simply go through the Linkvertise process again to get a new key.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Why do I need to go through Linkvertise?</div>
+    <div class="faq-a">Linkvertise is how NXT HUB supports its infrastructure and keeps all scripts free. It also helps prevent automated abuse of our systems.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">My key is not working — what do I do?</div>
+    <div class="faq-a">Make sure you copied the key correctly without extra spaces. If it still doesn't work, try generating a new key. Keys expire after 24 hours.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Can I share my key with others?</div>
+    <div class="faq-a">Keys are personal and tied to your session. Sharing them may cause issues. Each user should generate their own key.</div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">NXT HUB © 2026 — nxt-hub.xyz</div>
+    <div class="footer-links">
+      <a class="footer-link" onclick="showPage('home', document.querySelectorAll('.nav-pill')[0])">Home</a>
+      <a class="footer-link" onclick="showPage('scripts', document.querySelectorAll('.nav-pill')[1])">Scripts</a>
+      <a class="footer-link" onclick="showPage('obfuscator', document.querySelectorAll('.nav-pill')[2])">Obfuscator</a>
+      <a class="footer-link" onclick="showPage('platform', document.querySelectorAll('.nav-pill')[3])">Platform</a>
+      <a class="footer-link" onclick="showPage('getkey', document.querySelectorAll('.nav-pill')[4])">Get Key</a>
+      <a class="footer-link" href="#">↑ Top</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+function showPage(name, clickedPill) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+  if (clickedPill) clickedPill.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function filterScripts() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  document.querySelectorAll('.script-card').forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(q) ? 'block' : 'none';
+  });
+}
+</script>
+</body>
+</html>
